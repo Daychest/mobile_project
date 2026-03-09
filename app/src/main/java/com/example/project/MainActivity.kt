@@ -116,12 +116,12 @@ import kotlinx.coroutines.launch
 class AppStuff(
     var viewModel: UserViewModel,
     var lifecycleOwner: LifecycleOwner,
+    var appContext: Context,
+    var database: UserDatabase
 )
 
 
 class MainActivity : ComponentActivity() {
-
-
     override fun onCreate(savedInstanceState: Bundle?) {
 
         val db by lazy {
@@ -145,13 +145,15 @@ class MainActivity : ComponentActivity() {
         val appStuff: AppStuff = AppStuff(
             viewModel = viewModel,
             lifecycleOwner = this,
+            appContext = applicationContext,
+            database = db
         )
 
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             ProjectTheme {
-                Navigation(appStuff, applicationContext)
+                Navigation(appStuff)
             }
         }
     }
@@ -164,7 +166,7 @@ const val cameraScreenRoute = "cameraScreen"
 
 
 @Composable
-fun Navigation(appStuff: AppStuff, appContext: Context) {
+fun Navigation(appStuff: AppStuff) {
     var imageUriState = remember {
         mutableStateOf<Uri?>(null)
     }
@@ -202,7 +204,7 @@ fun Navigation(appStuff: AppStuff, appContext: Context) {
             )
         }
         composable(route = cameraScreenRoute) {
-            CameraScreen(appStuff, appContext)
+            CameraScreen(appStuff, appStuff.appContext)
         }
     }
 
