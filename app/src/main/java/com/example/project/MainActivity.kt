@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import androidx.activity.viewModels
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -65,6 +66,11 @@ import com.example.project.roomDb.UserDatabase
 import com.example.project.viewModel.UserViewModel
 import com.example.project.viewModel.Repository
 import androidx.core.net.toUri
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 
 class MainActivity : ComponentActivity() {
     private val db by lazy {
@@ -74,6 +80,16 @@ class MainActivity : ComponentActivity() {
             name = "user.db"
         ).build()
     }
+
+    private val viewModel by viewModels<UserViewModel>(
+        factoryProducer = {
+            object : ViewModelProvider.Factory {
+                override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                    return UserViewModel(Repository(db)) as T
+                }
+            }
+        }
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
