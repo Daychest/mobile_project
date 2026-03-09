@@ -1,28 +1,22 @@
 package com.example.project
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import com.example.project.ui.theme.ProjectTheme
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.draw.clip
@@ -55,8 +49,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import androidx.activity.viewModels
+import androidx.camera.core.CameraSelector
+import androidx.camera.view.CameraController
+import androidx.camera.view.LifecycleCameraController
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
+import androidx.compose.material.icons.Icons
+import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -66,37 +71,87 @@ import com.example.project.roomDb.UserDatabase
 import com.example.project.viewModel.UserViewModel
 import com.example.project.viewModel.Repository
 import androidx.core.net.toUri
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.launch
+import android.Manifest
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Matrix
+import android.util.Log
+import androidx.activity.compose.setContent
+import androidx.camera.core.ImageCapture.OnImageCapturedCallback
+import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.ImageProxy
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.filled.Cameraswitch
+import androidx.compose.material.icons.filled.Photo
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberBottomSheetScaffoldState
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
+
+class AppStuff(
+    var viewModel: UserViewModel,
+    var lifecycleOwner: LifecycleOwner,
+)
+
 
 class MainActivity : ComponentActivity() {
-    private val db by lazy {
-        Room.databaseBuilder(
-            applicationContext,
-            UserDatabase::class.java,
-            name = "user.db"
-        ).build()
-    }
 
-    private val viewModel by viewModels<UserViewModel>(
-        factoryProducer = {
-            object : ViewModelProvider.Factory {
-                override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    return UserViewModel(Repository(db)) as T
-                }
-            }
-        }
-    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
+
+        val db by lazy {
+            Room.databaseBuilder(
+                applicationContext,
+                UserDatabase::class.java,
+                name = "user.db"
+            ).build()
+        }
+
+        val viewModel by viewModels<UserViewModel>(
+            factoryProducer = {
+                object : ViewModelProvider.Factory {
+                    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                        return UserViewModel(Repository(db)) as T
+                    }
+                }
+            }
+        )
+
+        val appStuff: AppStuff = AppStuff(
+            viewModel = viewModel,
+            lifecycleOwner = this,
+        )
+
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             ProjectTheme {
-                Navigation(viewModel, this)
+                Navigation(appStuff, applicationContext)
             }
         }
     }
@@ -105,9 +160,11 @@ class MainActivity : ComponentActivity() {
 const val mainScreenRoute = "mainScreen"
 const val messageScreenRoute = "messageScreen"
 const val settingsScreenRoute = "settingsScreen"
+const val cameraScreenRoute = "cameraScreen"
+
 
 @Composable
-fun Navigation(viewModel: UserViewModel, lifecycleOwner: LifecycleOwner) {
+fun Navigation(appStuff: AppStuff, appContext: Context) {
     var imageUriState = remember {
         mutableStateOf<Uri?>(null)
     }
@@ -117,7 +174,7 @@ fun Navigation(viewModel: UserViewModel, lifecycleOwner: LifecycleOwner) {
     var userList by remember {
         mutableStateOf(listOf<User>())
     }
-    viewModel.getUsers().observe(lifecycleOwner) {
+    appStuff.viewModel.getUsers().observe(appStuff.lifecycleOwner) {
         userList = it
     }
     if (userList.isNotEmpty()) {
@@ -139,10 +196,158 @@ fun Navigation(viewModel: UserViewModel, lifecycleOwner: LifecycleOwner) {
         composable(route = settingsScreenRoute) {
             SettingsScreen(
                 navController = navController,
-                viewModel,
+                appStuff.viewModel,
                 imageUriState,
                 usernameState
             )
+        }
+        composable(route = cameraScreenRoute) {
+            CameraScreen(appStuff, appContext)
+        }
+    }
+
+
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CameraScreen(
+    appStuff: AppStuff,
+    appContext: Context
+) {
+    val scope = rememberCoroutineScope()
+    val scaffoldState = rememberBottomSheetScaffoldState()
+    val controller = remember {
+        LifecycleCameraController(appContext).apply {
+            setEnabledUseCases(
+                CameraController.IMAGE_CAPTURE or
+                        CameraController.VIDEO_CAPTURE
+            )
+        }
+    }
+    val viewModel = viewModel<MainViewModel>()
+    val bitmaps by viewModel.bitmaps.collectAsState()
+
+    fun takePhoto(
+        controller: LifecycleCameraController,
+        onPhotoTaken: (Bitmap) -> Unit
+    ) {
+        controller.takePicture(
+            ContextCompat.getMainExecutor(appContext),
+            object : OnImageCapturedCallback() {
+                override fun onCaptureSuccess(image: ImageProxy) {
+                    super.onCaptureSuccess(image)
+
+                    val matrix = Matrix().apply {
+                        postRotate(image.imageInfo.rotationDegrees.toFloat())
+                    }
+                    val rotatedBitmap = Bitmap.createBitmap(
+                        image.toBitmap(),
+                        0,
+                        0,
+                        image.width,
+                        image.height,
+                        matrix,
+                        true
+                    )
+
+                    onPhotoTaken(rotatedBitmap)
+                }
+
+                override fun onError(exception: ImageCaptureException) {
+                    super.onError(exception)
+                    Log.e("Camera", "Couldn't take photo: ", exception)
+                }
+            }
+        )
+    }
+
+    fun hasRequiredPermissions(): Boolean {
+        var cameraPermission =
+            ContextCompat.checkSelfPermission(
+                appContext,
+                Manifest.permission.CAMERA
+            )
+        var audioPermission =
+            ContextCompat.checkSelfPermission(
+                appContext,
+                Manifest.permission.RECORD_AUDIO
+            )
+        return (cameraPermission == PackageManager.PERMISSION_GRANTED &&
+                audioPermission == PackageManager.PERMISSION_GRANTED)
+    }
+
+    BottomSheetScaffold(
+        scaffoldState = scaffoldState,
+        sheetPeekHeight = 0.dp,
+        sheetContent = {
+            PhotoBottomSheetContent(
+                bitmaps = bitmaps,
+                modifier = Modifier
+                    .fillMaxWidth()
+            )
+        }
+    ) { padding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            CameraPreview(
+                controller = controller,
+                modifier = Modifier
+                    .fillMaxSize()
+            )
+
+            IconButton(
+                onClick = {
+                    controller.cameraSelector =
+                        if (controller.cameraSelector == CameraSelector.DEFAULT_BACK_CAMERA) {
+                            CameraSelector.DEFAULT_FRONT_CAMERA
+                        } else CameraSelector.DEFAULT_BACK_CAMERA
+                },
+                modifier = Modifier
+                    .offset(16.dp, 16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Cameraswitch,
+                    contentDescription = "Switch camera"
+                )
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceAround
+            ) {
+                IconButton(
+                    onClick = {
+                        scope.launch {
+                            scaffoldState.bottomSheetState.expand()
+                        }
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Photo,
+                        contentDescription = "Open gallery"
+                    )
+                }
+                IconButton(
+                    onClick = {
+                        takePhoto(
+                            controller = controller,
+                            onPhotoTaken = viewModel::onTakePhoto
+                        )
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PhotoCamera,
+                        contentDescription = "Take photo"
+                    )
+                }
+            }
         }
     }
 }
@@ -329,7 +534,7 @@ fun MessageCard(msg: Message, uri: Uri?, username: String) {
         // We toggle the isExpanded variable when we click on this Column
         Column(modifier = Modifier.clickable { isExpanded = !isExpanded }) {
             var displayName = msg.author
-            if (username != ""){
+            if (username != "") {
                 displayName = username
             }
             Text(
