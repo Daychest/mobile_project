@@ -9,9 +9,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import com.example.project.R
 import androidx.compose.ui.Modifier
 import com.example.project.ui.theme.ProjectTheme
 import android.content.Intent
+import androidx.compose.ui.res.painterResource
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.shape.CircleShape
@@ -29,7 +31,6 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -87,8 +88,10 @@ import androidx.activity.compose.setContent
 import androidx.camera.core.ImageCapture.OnImageCapturedCallback
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.ImageProxy
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
@@ -114,6 +117,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
+import java.nio.file.WatchEvent
 
 class AppStuff(
     var viewModel: UserViewModel,
@@ -370,6 +374,17 @@ fun MainScreen(navController: NavController) {
             .fillMaxSize()
             .padding(horizontal = 50.dp)
     ) {
+        Image(
+            painter = painterResource(R.drawable.strange_man),
+            contentDescription = null,
+            modifier = Modifier.fillMaxWidth().size(80.dp)
+        )
+        Image(
+                painter = painterResource(R.drawable.reaction),
+        contentDescription = null,
+            modifier = Modifier.fillMaxWidth().size(80.dp)
+        )
+        Spacer(modifier = Modifier.size(10.dp))
         Button(
             modifier = Modifier
                 .fillMaxWidth()
@@ -403,9 +418,20 @@ fun MessageScreen(
         modifier = Modifier
             .fillMaxWidth()
             .padding(10.dp),
-        verticalArrangement = Arrangement.Center,
+        verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        Spacer(modifier = Modifier.size(10.dp))
+        Conversation(SampleData.conversationSample, uri, username)
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth().fillMaxHeight()
+            .padding(10.dp),
+        verticalArrangement = Arrangement.Bottom,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+
         Spacer(modifier = Modifier.height(20.dp))
         Row(
             modifier = Modifier.fillMaxWidth()
@@ -429,9 +455,7 @@ fun MessageScreen(
                 Text(text = "Settings")
             }
         }
-        ProjectTheme {
-            Conversation(SampleData.conversationSample, uri, username)
-        }
+        Spacer(modifier = Modifier.size(10.dp))
     }
 }
 
@@ -545,8 +569,11 @@ fun ProfilePicture(picture: Int) {
 
 @Composable
 fun MessageCard(msg: Message, uri: Uri?, username: String) {
-    Row(modifier = Modifier.padding(all = 8.dp)) {
-        AsyncProfilePicture(uri, 40.dp)
+    Row(modifier = Modifier
+        .padding(all = 8.dp)
+        .fillMaxWidth()) {
+        //AsyncProfilePicture(uri, 40.dp)
+        ProfilePicture(R.drawable.reaction)
         Spacer(modifier = Modifier.width(8.dp))
 
         // We keep track if the message is expanded or not in this
@@ -598,7 +625,7 @@ fun MessageCard(msg: Message, uri: Uri?, username: String) {
 fun Conversation(messages: List<Message>, uri: Uri?, username: String) {
     LazyColumn {
         items(messages) { message ->
-            MessageCard(message, uri, username)
+            MessageCard(message, uri, "Strange Man")
         }
     }
 }
