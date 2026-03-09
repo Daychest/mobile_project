@@ -208,7 +208,7 @@ fun Navigation(appStuff: AppStuff) {
                 navController = navController,
                 appStuff.viewModel,
                 imageUriState,
-                usernameState
+                usernameState, appStuff
             )
         }
         composable(route = cameraScreenRoute) {
@@ -464,7 +464,8 @@ fun SettingsScreen(
     navController: NavController,
     viewModel: UserViewModel,
     imageUriState: MutableState<Uri?>,
-    usernameState: MutableState<String>
+    usernameState: MutableState<String>,
+    appStuff: AppStuff
 ) {
     val context = LocalContext.current
 
@@ -513,6 +514,8 @@ fun SettingsScreen(
                 label = { Text(text = "Username") }
             )
 
+
+
         }
 
         Button(
@@ -536,6 +539,41 @@ fun SettingsScreen(
         ) {
             Text(text = "Back")
         }
+
+        fun hasRequiredPermissions(): Boolean {
+            var cameraPermission =
+                ContextCompat.checkSelfPermission(
+                    appStuff.appContext,
+                    Manifest.permission.CAMERA
+                )
+            return (cameraPermission == PackageManager.PERMISSION_GRANTED)
+        }
+
+
+        Spacer(modifier = Modifier.size(20.dp))
+
+        Button(
+            onClick = {
+                navController.popBackStack()
+
+
+                if (!hasRequiredPermissions()) {
+                    ActivityCompat.requestPermissions(
+                        appStuff.activity, arrayOf(Manifest.permission.CAMERA), 0
+                    )
+                }
+            },
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .fillMaxWidth(),
+        ) {
+            if (!hasRequiredPermissions()) {
+                Text(text = "Give camera permissions")
+            }else{
+                Text(text = "Camera permissions given")
+            }
+        }
+
 
 
     }
