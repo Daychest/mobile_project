@@ -78,6 +78,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import kotlinx.coroutines.launch
 import android.Manifest
+import android.app.Activity
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Matrix
@@ -117,7 +118,8 @@ class AppStuff(
     var viewModel: UserViewModel,
     var lifecycleOwner: LifecycleOwner,
     var appContext: Context,
-    var database: UserDatabase
+    var database: UserDatabase,
+    var activity: Activity
 )
 
 
@@ -146,7 +148,8 @@ class MainActivity : ComponentActivity() {
             viewModel = viewModel,
             lifecycleOwner = this,
             appContext = applicationContext,
-            database = db
+            database = db,
+            activity = this
         )
 
         super.onCreate(savedInstanceState)
@@ -204,7 +207,7 @@ fun Navigation(appStuff: AppStuff) {
             )
         }
         composable(route = cameraScreenRoute) {
-            CameraScreen(appStuff, appStuff.appContext)
+            CameraScreen(appStuff)
         }
     }
 
@@ -214,13 +217,14 @@ fun Navigation(appStuff: AppStuff) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CameraScreen(
-    appStuff: AppStuff,
-    appContext: Context
+    appStuff: AppStuff
 ) {
+
+
     val scope = rememberCoroutineScope()
     val scaffoldState = rememberBottomSheetScaffoldState()
     val controller = remember {
-        LifecycleCameraController(appContext).apply {
+        LifecycleCameraController(appStuff.appContext).apply {
             setEnabledUseCases(
                 CameraController.IMAGE_CAPTURE or
                         CameraController.VIDEO_CAPTURE
@@ -235,7 +239,7 @@ fun CameraScreen(
         onPhotoTaken: (Bitmap) -> Unit
     ) {
         controller.takePicture(
-            ContextCompat.getMainExecutor(appContext),
+            ContextCompat.getMainExecutor(appStuff.appContext),
             object : OnImageCapturedCallback() {
                 override fun onCaptureSuccess(image: ImageProxy) {
                     super.onCaptureSuccess(image)
@@ -267,16 +271,16 @@ fun CameraScreen(
     fun hasRequiredPermissions(): Boolean {
         var cameraPermission =
             ContextCompat.checkSelfPermission(
-                appContext,
+                appStuff.appContext,
                 Manifest.permission.CAMERA
             )
-        var audioPermission =
-            ContextCompat.checkSelfPermission(
-                appContext,
-                Manifest.permission.RECORD_AUDIO
-            )
-        return (cameraPermission == PackageManager.PERMISSION_GRANTED &&
-                audioPermission == PackageManager.PERMISSION_GRANTED)
+        return (cameraPermission == PackageManager.PERMISSION_GRANTED)
+    }
+
+    if (!hasRequiredPermissions()) {
+        ActivityCompat.requestPermissions(
+            appStuff.activity, arrayOf(Manifest.permission.CAMERA), 0
+        )
     }
 
     BottomSheetScaffold(
@@ -384,6 +388,16 @@ fun MainScreen(navController: NavController) {
             colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
         ) {
             Text(text = "Settings")
+        }
+
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = {
+                navController.navigate(cameraScreenRoute)
+            },
+            colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
+        ) {
+            Text(text = "Camera")
         }
     }
 }
