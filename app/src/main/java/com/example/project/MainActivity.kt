@@ -108,6 +108,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -389,16 +390,6 @@ fun MainScreen(navController: NavController) {
         ) {
             Text(text = "Settings")
         }
-
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = {
-                navController.navigate(cameraScreenRoute)
-            },
-            colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
-        ) {
-            Text(text = "Camera")
-        }
     }
 }
 
@@ -473,36 +464,55 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Button(onClick = {
-            val user: User = User(usernameState.value, imageUriState.value.toString(), 0)
-            viewModel.upsertUser(user)
-        }) {
-            Text(text = "set data")
-        }
+        Row() {
+            Column(modifier = Modifier.clickable(onClick = {
+                singleImagePickerLauncher.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                )
+            })) {
+                AsyncProfilePicture(imageUriState.value, 60.dp)
+            }
+            Column(modifier = Modifier.clickable(onClick = {
+                navController.navigate(cameraScreenRoute)
+            })) {
+                Icon(
+                    imageVector = Icons.Default.PhotoCamera,
+                    contentDescription = "Take photo"
+                )
+            }
 
-        Column(modifier = Modifier.clickable(onClick = {
-            singleImagePickerLauncher.launch(
-                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+            Spacer(Modifier.size(4.dp))
+            TextField(
+                value = usernameState.value, onValueChange = { newText: String ->
+                    usernameState.value = newText
+                },
+                label = { Text(text = "Username") }
             )
-        })) {
-            AsyncProfilePicture(imageUriState.value)
+
         }
 
-        TextField(
-            value = usernameState.value, onValueChange = { newText: String ->
-                usernameState.value = newText
+        Button(
+            onClick = {
+                val user: User = User(usernameState.value, imageUriState.value.toString(), 0)
+                viewModel.upsertUser(user)
             },
-            label = { Text(text = "Username") })
+            modifier = Modifier
+                .fillMaxWidth(),
+        ) {
+            Text(text = "Save changes")
+        }
+
         Button(
             onClick = {
                 navController.popBackStack()
             },
             modifier = Modifier
-                .align(Alignment.CenterHorizontally)
                 .fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
         ) {
             Text(text = "Back")
         }
+
 
     }
 }
@@ -510,12 +520,12 @@ fun SettingsScreen(
 data class Message(val author: String, val body: String)
 
 @Composable
-fun AsyncProfilePicture(uri: Uri?) {
+fun AsyncProfilePicture(uri: Uri?, size: Dp) {
     AsyncImage(
         model = uri,
         contentDescription = "",
         modifier = Modifier
-            .size(40.dp)
+            .size(size)
             .clip(CircleShape)
             .border(1.5.dp, MaterialTheme.colorScheme.secondary, CircleShape)
     )
@@ -536,7 +546,7 @@ fun ProfilePicture(picture: Int) {
 @Composable
 fun MessageCard(msg: Message, uri: Uri?, username: String) {
     Row(modifier = Modifier.padding(all = 8.dp)) {
-        AsyncProfilePicture(uri)
+        AsyncProfilePicture(uri, 40.dp)
         Spacer(modifier = Modifier.width(8.dp))
 
         // We keep track if the message is expanded or not in this
